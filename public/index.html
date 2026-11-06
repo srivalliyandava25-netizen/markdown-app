@@ -1,0 +1,52 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Collaborative Markdown Notes</title>
+
+<link rel="stylesheet" href="/style.css" />
+<link rel="stylesheet" href="/vendor/easymde/easymde.min.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <h2>My Notes</h2>
+      <button id="new-note-btn">+ New Note</button>
+
+      <input
+      type="text"
+      id="search-notes"
+      placeholder="Search notes..."
+      />
+      <div id="notes-list"></div>
+    </aside>
+
+    <main class="editor-area">
+      <header class="topbar">
+        <input
+          id="note-title"
+          type="text"
+          placeholder="Enter note title..."
+        />
+        <input
+          id="note-author"
+          type="text"
+          placeholder="Your name"
+          value="Anonymous"
+        />
+        <button id="save-note-btn">Save Note</button>
+        <button id="delete-note-btn">Delete</button>
+      </header>
+
+      <textarea id="markdown-editor"></textarea>
+
+      <p id="status-message"></p>
+    </main>
+  </div>
+
+  <script src="/vendor/easymde/easymde.min.js"></script>
+  <script src="/script.js"></script>
+</body>
+</html>

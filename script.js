@@ -1,5 +1,5 @@
 
-const API_URL = "http://localhost:5000/notes";
+const API_URL = "/notes";
 
 const editor = new EasyMDE({
   element: document.getElementById("markdown-editor"),

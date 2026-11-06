@@ -1,19 +1,66 @@
 
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
+const mongoose = require('mongoose');
 require('dotenv').config();
 
 const app = express();
 
+// Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static(__dirname));
 
-const Note = require('./models/Note');
+// Serve frontend files
+app.use('/vendor', express.static(path.join(__dirname, 'public', 'vendor')));
+app.use(express.static(path.join(__dirname, 'public')));
+// MongoDB connection
+let isConnecting = false;
 
-app.post('/notes', async(req, res) => {
+async function connectDB() {
+    if (mongoose.connection.readyState === 1) {
+        return;
+    }
+
+    if (!process.env.MONGO_URI) {
+        throw new Error('MONGO_URI is not configured');
+    }
+
+    if (!isConnecting) {
+        isConnecting = mongoose.connect(process.env.MONGO_URI)
+            .then(() => {
+                console.log('MongoDB connected successfully');
+            })
+            .finally(() => {
+                isConnecting = false;
+            });
+    }
+
+    await isConnecting;
+}
+
+// Ensure database is connected before API requests
+app.use('/notes', async (req, res, next) => {
     try {
-        const {title, content, author} = req.body;
+        await connectDB();
+        next();
+    } catch (error) {
+        console.error('MongoDB connection error:', error);
+        res.status(500).json({
+            message: 'Database connection failed'
+        });
+    }
+});
+
+// Homepage
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Create note
+app.post('/notes', async (req, res) => {
+    try {
+        const { title, content, author } = req.body;
 
         if (!title || !title.trim()) {
             return res.status(400).json({
@@ -36,16 +83,23 @@ app.post('/notes', async(req, res) => {
     }
 });
 
+// Get all notes
 app.get('/notes', async (req, res) => {
-    try{
-        const notes = await Note.find({}).sort({ updatedAt: -1 }).exec();
+    try {
+        const notes = await Note.find({})
+            .sort({ updatedAt: -1 })
+            .exec();
+
         res.json(notes);
     } catch (error) {
-        console.error('Fetch notes error: ', error)
-        res.status(500).json({ message: 'Failed to fetch notes'});
+        console.error('Fetch notes error:', error);
+        res.status(500).json({
+            message: 'Failed to fetch notes'
+        });
     }
-})
+});
 
+// Update note
 app.put('/notes/:id', async (req, res) => {
     try {
         const note = await Note.findByIdAndUpdate(
@@ -55,42 +109,53 @@ app.put('/notes/:id', async (req, res) => {
         );
 
         if (!note) {
-            return res.status(404).json({ message: 'Note not found'});
+            return res.status(404).json({
+                message: 'Note not found'
+            });
         }
+
         res.json(note);
     } catch (error) {
-        res.status(400).json({ message: 'Failed to update note' })
+        console.error('Update note error:', error);
+        res.status(400).json({
+            message: 'Failed to update note'
+        });
     }
 });
 
+// Delete note
 app.delete('/notes/:id', async (req, res) => {
-    try { 
-        const note = await Note.findByIdAndDelete(req. params.id);
+    try {
+        const note = await Note.findByIdAndDelete(req.params.id);
 
         if (!note) {
-            return res.status(400).json({ message: 'Note not found' })
+            return res.status(404).json({
+                message: 'Note not found'
+            });
         }
 
-        res.json({ message: 'Note deleted successfully' })
+        res.json({
+            message: 'Note deleted successfully'
+        });
     } catch (error) {
-        res.status(400).json({ message: 'Failed to delete note'});
+        console.error('Delete note error:', error);
+        res.status(400).json({
+            message: 'Failed to delete note'
+        });
     }
 });
 
-// app.get('/', (req, res) => {
-//   res.send('Markdown Notes API is running!');
-// });
+// Load Note model
+const Note = require('./models/Note');
 
-const mongoose = require('mongoose');
+// Local development only
+if (require.main === module) {
+    const PORT = process.env.PORT || 5000;
 
-mongoose.connect(process.env.MONGO_URI)
-.then(() => console.log('MongoDB connect sucessfully'))
-.catch((error) => console.error('MongoDB connection failed:', error));
+    app.listen(PORT, () => {
+        console.log(`Server running on port ${PORT}`);
+    });
+}
 
-
-const PORT = process.env.PORT || 5000;
-
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
-
+// Export app for deployment
+module.exports = app;
